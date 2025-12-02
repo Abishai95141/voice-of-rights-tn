@@ -50,27 +50,28 @@ export default function Dashboard() {
   };
 
   const handleSubmit = async (prompt: string) => {
-    let sessionId = activeSessionId;
+    let currentSessionId = activeSessionId;
+    const isNewSession = !currentSessionId;
 
     // Create a new session if none is active
-    if (!sessionId) {
+    if (!currentSessionId) {
       const newSessionId = await createSession(prompt.slice(0, 50));
       if (!newSessionId) return;
-      sessionId = newSessionId;
+      currentSessionId = newSessionId;
       setActiveSessionId(newSessionId);
     }
 
-    // Add user message to database
-    await addMessage('user', prompt);
+    // Add user message to database (pass session ID explicitly for new sessions)
+    await addMessage('user', prompt, currentSessionId);
     setIsTyping(true);
 
     try {
       const response = await handleSendMessage(prompt);
-      await addMessage('assistant', response);
+      await addMessage('assistant', response, currentSessionId);
 
       // Update session title with first message if it's a new chat
-      if (!activeSessionId) {
-        await updateSessionTitle(sessionId, prompt.slice(0, 50));
+      if (isNewSession) {
+        await updateSessionTitle(currentSessionId, prompt.slice(0, 50));
       }
     } catch (error) {
       console.error('Error sending message:', error);
