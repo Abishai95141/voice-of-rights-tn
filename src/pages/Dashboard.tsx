@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -6,27 +6,7 @@ import { ChatMessage } from '@/components/ChatMessage';
 import { ChatInput } from '@/components/ChatInput';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { handleSendMessage } from '@/lib/chat-api';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-interface ChatSession {
-  id: string;
-  title: string;
-  created_at: string;
-}
-
-// Dummy data for chat history
-const dummySessions: ChatSession[] = [
-  { id: '1', title: 'Welfare Scheme eligibility for farmers', created_at: new Date().toISOString() },
-  { id: '2', title: 'Land Dispute question', created_at: new Date().toISOString() },
-  { id: '3', title: "Women's safety laws in TN", created_at: new Date().toISOString() },
-  { id: '4', title: 'Ration card application process', created_at: new Date().toISOString() },
-  { id: '5', title: 'Senior citizen pension benefits', created_at: new Date().toISOString() },
-];
+import { useChatSessions, useChatMessages } from '@/hooks/use-chat-sessions';
 
 const suggestionChips = [
   "What are my rights as a tenant?",
@@ -37,11 +17,12 @@ const suggestionChips = [
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const [sessions] = useState<ChatSession[]>(dummySessions);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { sessions, createSession, updateSessionTitle } = useChatSessions();
+  const { messages, addMessage, clearMessages } = useChatMessages(activeSessionId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,33 +34,36 @@ export default function Dashboard() {
 
   const handleNewChat = () => {
     setActiveSessionId(null);
-    setMessages([]);
+    clearMessages();
   };
 
   const handleSelectSession = (id: string) => {
     setActiveSessionId(id);
-    // In a real app, load messages for this session
-    setMessages([]);
   };
 
   const handleSubmit = async (prompt: string) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: prompt,
-    };
+    let sessionId = activeSessionId;
 
-    setMessages(prev => [...prev, userMessage]);
+    // Create a new session if none is active
+    if (!sessionId) {
+      const newSessionId = await createSession(prompt.slice(0, 50));
+      if (!newSessionId) return;
+      sessionId = newSessionId;
+      setActiveSessionId(newSessionId);
+    }
+
+    // Add user message to database
+    await addMessage('user', prompt);
     setIsTyping(true);
 
     try {
       const response = await handleSendMessage(prompt);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      await addMessage('assistant', response);
+
+      // Update session title with first message if it's a new chat
+      if (!activeSessionId) {
+        await updateSessionTitle(sessionId, prompt.slice(0, 50));
+      }
     } catch (error) {
       console.error('Error sending message:', error);
     } finally {
