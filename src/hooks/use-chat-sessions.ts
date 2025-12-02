@@ -40,9 +40,33 @@ export function useChatSessions() {
     setLoading(false);
   }, [user]);
 
+  // Initial fetch and real-time subscription
   useEffect(() => {
     fetchSessions();
-  }, [fetchSessions]);
+
+    if (!user) return;
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('chat-sessions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_sessions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchSessions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchSessions, user]);
 
   const createSession = async (title: string = 'New Chat'): Promise<string | null> => {
     if (!user) return null;

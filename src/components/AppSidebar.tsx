@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, LogOut, User } from 'lucide-react';
+import { Plus, MessageSquare, LogOut, User, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,15 +23,22 @@ interface AppSidebarProps {
   activeSessionId: string | null;
   onNewChat: () => void;
   onSelectSession: (id: string) => void;
+  onDeleteSession?: (id: string) => void;
 }
 
 export function AppSidebar({ 
   sessions, 
   activeSessionId, 
   onNewChat, 
-  onSelectSession 
+  onSelectSession,
+  onDeleteSession,
 }: AppSidebarProps) {
   const { profile, signOut } = useAuth();
+
+  const handleDelete = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    onDeleteSession?.(sessionId);
+  };
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -55,15 +62,25 @@ export function AppSidebar({
         <ScrollArea className="flex-1 px-2">
           <SidebarMenu>
             {sessions.map((session) => (
-              <SidebarMenuItem key={session.id}>
+              <SidebarMenuItem key={session.id} className="group relative">
                 <SidebarMenuButton
                   onClick={() => onSelectSession(session.id)}
                   isActive={activeSessionId === session.id}
-                  className="w-full justify-start gap-2 text-left"
+                  className="w-full justify-start gap-2 text-left pr-8"
                 >
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <span className="truncate">{session.title}</span>
                 </SidebarMenuButton>
+                {onDeleteSession && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    onClick={(e) => handleDelete(e, session.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </SidebarMenuItem>
             ))}
             {sessions.length === 0 && (

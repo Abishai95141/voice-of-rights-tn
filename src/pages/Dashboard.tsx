@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { sessions, createSession, updateSessionTitle } = useChatSessions();
+  const { sessions, createSession, updateSessionTitle, deleteSession } = useChatSessions();
   const { messages, addMessage, clearMessages } = useChatMessages(activeSessionId);
 
   const scrollToBottom = () => {
@@ -39,6 +39,14 @@ export default function Dashboard() {
 
   const handleSelectSession = (id: string) => {
     setActiveSessionId(id);
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    await deleteSession(id);
+    if (activeSessionId === id) {
+      setActiveSessionId(null);
+      clearMessages();
+    }
   };
 
   const handleSubmit = async (prompt: string) => {
@@ -81,6 +89,7 @@ export default function Dashboard() {
           activeSessionId={activeSessionId}
           onNewChat={handleNewChat}
           onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
         />
 
         <main className="flex-1 flex flex-col min-w-0">
