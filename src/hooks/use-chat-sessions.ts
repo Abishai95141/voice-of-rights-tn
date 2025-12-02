@@ -146,12 +146,13 @@ export function useChatMessages(sessionId: string | null) {
     fetchMessages();
   }, [fetchMessages]);
 
-  const addMessage = async (role: 'user' | 'assistant', content: string) => {
-    if (!sessionId) return null;
+  const addMessage = async (role: 'user' | 'assistant', content: string, overrideSessionId?: string) => {
+    const targetSessionId = overrideSessionId || sessionId;
+    if (!targetSessionId) return null;
 
     const { data, error } = await supabase
       .from('chat_messages')
-      .insert({ session_id: sessionId, role, content })
+      .insert({ session_id: targetSessionId, role, content })
       .select('id, role, content, created_at')
       .single();
 
